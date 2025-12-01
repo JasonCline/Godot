@@ -1,0 +1,3 @@
+[submodule "modules/kotlin_jvm"]
+	path = modules/kotlin_jvm
+	url = ssh://git@github.com/JasonCline/godot-kotlin-jvm.git
