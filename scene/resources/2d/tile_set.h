@@ -30,6 +30,7 @@
 
 #pragma once
 
+#include "core/io/json.h"
 #include "core/io/resource.h"
 #include "core/object/object.h"
 #include "core/templates/local_vector.h"
@@ -654,6 +655,7 @@ private:
 	bool initializing = true;
 
 	Ref<Texture2D> texture;
+	Ref<JSON> json;
 	Vector2i margins;
 	Vector2i separation;
 	Size2i texture_region_size = Size2i(16, 16);
@@ -718,7 +720,11 @@ public:
 	// Base properties.
 	void set_texture(Ref<Texture2D> p_texture);
 	Ref<Texture2D> get_texture() const;
-	void set_margins(Vector2i p_margins);
+
+	void set_json(Ref<JSON> p_texture);
+	Ref<JSON> get_json() const;
+
+    void set_margins(Vector2i p_margins);
 	Vector2i get_margins() const;
 	void set_separation(Vector2i p_separation);
 	Vector2i get_separation() const;

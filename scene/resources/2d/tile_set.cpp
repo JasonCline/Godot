@@ -4666,6 +4666,25 @@ Ref<Texture2D> TileSetAtlasSource::get_texture() const {
 	return texture;
 }
 
+void TileSetAtlasSource::set_json(Ref<JSON> p_json) {
+	// if (json.is_valid()) {
+	// 	json->disconnect_changed(callable_mp(this, &TileSetAtlasSource::_queue_update_padded_texture));
+	// }
+
+	json = p_json;
+
+	// if (json.is_valid()) {
+	// 	json->connect_changed(callable_mp(this, &TileSetAtlasSource::_queue_update_padded_texture));
+	// }
+
+	// _queue_update_padded_texture();
+	emit_changed();
+}
+
+Ref<JSON> TileSetAtlasSource::get_json() const {
+	return json;
+}
+
 void TileSetAtlasSource::set_margins(Vector2i p_margins) {
 	if (p_margins.x < 0 || p_margins.y < 0) {
 		WARN_PRINT("Atlas source margins should be positive.");
@@ -5474,6 +5493,8 @@ void TileSetAtlasSource::_notification(int p_notification) {
 void TileSetAtlasSource::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("set_texture", "texture"), &TileSetAtlasSource::set_texture);
 	ClassDB::bind_method(D_METHOD("get_texture"), &TileSetAtlasSource::get_texture);
+	ClassDB::bind_method(D_METHOD("set_json", "json"), &TileSetAtlasSource::set_json);
+	ClassDB::bind_method(D_METHOD("get_json"), &TileSetAtlasSource::get_json);
 	ClassDB::bind_method(D_METHOD("set_margins", "margins"), &TileSetAtlasSource::set_margins);
 	ClassDB::bind_method(D_METHOD("get_margins"), &TileSetAtlasSource::get_margins);
 	ClassDB::bind_method(D_METHOD("set_separation", "separation"), &TileSetAtlasSource::set_separation);
@@ -5484,6 +5505,7 @@ void TileSetAtlasSource::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_use_texture_padding"), &TileSetAtlasSource::get_use_texture_padding);
 
 	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture2D", PROPERTY_USAGE_NO_EDITOR), "set_texture", "get_texture");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "json", PROPERTY_HINT_RESOURCE_TYPE, "JSON", PROPERTY_USAGE_NO_EDITOR), "set_json", "get_json");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "margins", PROPERTY_HINT_NONE, "suffix:px", PROPERTY_USAGE_NO_EDITOR), "set_margins", "get_margins");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "separation", PROPERTY_HINT_NONE, "suffix:px", PROPERTY_USAGE_NO_EDITOR), "set_separation", "get_separation");
 	ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "texture_region_size", PROPERTY_HINT_NONE, "suffix:px", PROPERTY_USAGE_NO_EDITOR), "set_texture_region_size", "get_texture_region_size");
