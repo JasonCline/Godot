@@ -518,6 +518,10 @@ for tool in custom_tools:
 
 # Add default include paths.
 env.Prepend(CPPPATH=["#"])
+env.AppendUnique(CPPPATH=[
+    '/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home/include',
+    '/Library/Java/JavaVirtualMachines/openjdk-21.jdk/Contents/Home/include/darwin'
+])
 
 # configure ENV for platform
 env.platform_exporters = platform_exporters

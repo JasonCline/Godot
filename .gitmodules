@@ -1,0 +1,4 @@
+[submodule "modules/kotlin_jvm"]
+	path = modules/kotlin_jvm
+	url = ssh://git@github.com/JasonCline/godot-kotlin-jvm.git
+	branch = tf-0.17.0-4.7.2
