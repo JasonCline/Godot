@@ -20,6 +20,7 @@ This directory contains the patch set applied by TwoFrogs Studio to the Godot En
 | [`0004-aws-codeartifact-publishing.patch`](file:///Users/jasoncline/workplace/GodotEditor/packages/Godot/twofrogs-patches/0004-aws-codeartifact-publishing.patch) | `modules/kotlin_jvm` | Configures publishing to TwoFrogs AWS CodeArtifact repository, automatic authentication via cached token (`~/.aws/codeartifact-token-cache-twofrogs-twofrogs-maven-repository`), and automated package overwrite handling. |
 | [`0005-godot-engine-jni-headers.patch`](file:///Users/jasoncline/workplace/GodotEditor/packages/Godot/twofrogs-patches/0005-godot-engine-jni-headers.patch) | Godot Engine Root | Appends OpenJDK 21 JNI headers (`include` and `include/darwin`) to `CPPPATH` in `SConstruct` for macOS compilation. |
 | [`0006-build-script-subcommands.patch`](file:///Users/jasoncline/workplace/GodotEditor/packages/Godot/twofrogs-patches/0006-build-script-subcommands.patch) | Godot Engine Root | Unified CLI build script `build.sh` supporting `build`, `publish`, `publish_local`, and `install` to `/Applications/godot_jvm.app`. |
+| [`0007-jvm-debug-client-mode-and-editor-toolbar-mode-selector.patch`](file:///Users/jasoncline/workplace/GodotEditor/packages/Godot/twofrogs-patches/0007-jvm-debug-client-mode-and-editor-toolbar-mode-selector.patch) | `modules/kotlin_jvm` | Adds `--jvm-debug-mode=server|client` support for JDWP attach/listen workflows, and adds Godot Editor toolbar dropdown selector for JVM execution modes (`Standard`, `Debug`, `Debug w/ Wait`, `Debug Auto-attach`). |
 
 ---
 

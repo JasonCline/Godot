@@ -1,0 +1,394 @@
+src/editor/godot_kotlin_jvm_editor.cpp --- 1/6 --- C++
+ 13  13 #include <editor/settings/editor_settings.h>
+ 14  14 #include <editor/editor_interface.h>
+ 15  15 #include <editor/file_system/editor_file_system.h>
+ ..  16 #include <editor/run/editor_run.h>
+ 16  17 #include <gd_kotlin.h>
+ ..  18 
+ ..  19 void GodotKotlinJvmEditor::on_jvm_run_mode_selected(int p_index) {
+ ..  20     EditorSettings::get_singleton()->set_setting(jvm_run_mode, p_index);
+ ..  21 }
+ ..  22 
+ ..  23 void GodotKotlinJvmEditor::on_editor_run_instance_starting(int p_index, List<String>& r_arguments) {
+ ..  24     int mode = 0;
+ ..  25     if (EditorSettings::get_singleton() && EditorSettings::get_singleton()->has_setting(jvm_run_mode)) {
+ ..  26         mode = EditorSettings::get_singleton()->get_setting(jvm_run_mode);
+ ..  27     }
+ ..  28     switch (mode) {
+ ..  29         case JVM_RUN_DEBUG:
+ ..  30             r_arguments.push_back("--jvm-use-debug=true");
+ ..  31             r_arguments.push_back("--jvm-wait-for-debugger=false");
+ ..  32             r_arguments.push_back("--jvm-debug-mode=server");
+ ..  33             break;
+ ..  34         case JVM_RUN_DEBUG_WAIT:
+ ..  35             r_arguments.push_back("--jvm-use-debug=true");
+ ..  36             r_arguments.push_back("--jvm-wait-for-debugger=true");
+ ..  37             r_arguments.push_back("--jvm-debug-mode=server");
+ ..  38             break;
+ ..  39         case JVM_RUN_DEBUG_AUTO_ATTACH:
+ ..  40             r_arguments.push_back("--jvm-use-debug=true");
+ ..  41             r_arguments.push_back("--jvm-debug-mode=client");
+ ..  42             r_arguments.push_back("--jvm-wait-for-debugger=false");
+ ..  43             break;
+ ..  44         case JVM_RUN_STANDARD:
+ ..  45         default:
+ ..  46             break;
+ ..  47     }
+ ..  48 }
+ 17  49 
+ 18  50 void GodotKotlinJvmEditor::on_menu_option_pressed(int option_id) {
+ 19  51     switch (option_id) {
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 2/6 --- C++
+121 153     Control* editor_base_control = get_editor_interface()->get_base_control();
+122 154 
+123 155     switch (notification) {
+124 156         case NOTIFICATION_ENTER_TREE: {
+125 157             _EDITOR_DEF(build_before_start, false);
+126 158             _EDITOR_DEF(show_info_on_start, true);
+... 159             _EDITOR_DEF(jvm_run_mode, 0);
+127 160             _GLOBAL_DEF(gradle_dir, "res://");
+128 161             ProjectSettings::get_singleton()->set_custom_property_info(
+129 162               PropertyInfo(Variant::STRING, gradle_dir, PROPERTY_HINT_GLOBAL_DIR, "")
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 3/6 --- C++
+149 182 
+150 183             add_control_to_container(CustomControlContainer::CONTAINER_TOOLBAR, separator);
+... 184 
+... 185             tool_bar_jvm_run_mode_choice->set_flat(true);
+... 186             tool_bar_jvm_run_mode_choice->add_item("Standard", JVM_RUN_STANDARD);
+... 187             tool_bar_jvm_run_mode_choice->add_item("Debug", JVM_RUN_DEBUG);
+... 188             tool_bar_jvm_run_mode_choice->add_item("Debug w/ Wait", JVM_RUN_DEBUG_WAIT);
+... 189             tool_bar_jvm_run_mode_choice->add_item("Debug Auto-attach", JVM_RUN_DEBUG_AUTO_ATTACH);
+... 190             tool_bar_jvm_run_mode_choice->set_fit_to_longest_item(false);
+... 191             tool_bar_jvm_run_mode_choice->set_tooltip_text("Select JVM Execution Mode for running instances");
+... 192             int saved_run_mode = EDITOR_GET(jvm_run_mode);
+... 193             tool_bar_jvm_run_mode_choice->select(saved_run_mode);
+... 194             tool_bar_jvm_run_mode_choice->connect(SNAME("item_selected"), callable_mp(this, &GodotKotlinJvmEditor::on_jvm_run_mode_selected));
+... 195             add_control_to_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_jvm_run_mode_choice);
+... 196 
+... 197             EditorRun::instance_starting_callback = &GodotKotlinJvmEditor::on_editor_run_instance_starting;
+151 198 
+152 199             tool_bar_gradle_task_choice->set_flat(true);
+153 200             tool_bar_gradle_task_choice->add_item("Build", GradleTaskRunner::Task::BUILD_DEBUG);
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 4/6 --- C++
+184 231             );
+185 232             set_process(true);
+186 233             break;
+... 234         }
+187 235 
+188 236         case NOTIFICATION_PROCESS:
+189 237             update_jvm_status();
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 5/6 --- C++
+209 257             break;
+210 258 
+211 259         case NOTIFICATION_EXIT_TREE:
+... 260             if (EditorRun::instance_starting_callback == &GodotKotlinJvmEditor::on_editor_run_instance_starting) {
+... 261                 EditorRun::instance_starting_callback = nullptr;
+... 262             }
+212 263             editor_base_control->remove_child(task_dialog);
+213 264             editor_base_control->remove_child(about_dialog);
+214 265             editor_base_control->remove_child(project_dialog);
+215 266             remove_tool_menu_item("Kotlin/JVM");
+216 267             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, jvm_status_light);
+217 268             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, separator);
+... 269             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_jvm_run_mode_choice);
+218 270             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_gradle_task_choice);
+219 271             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_gradle_task_button);
+220 272             break;
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 6/6 --- C++
+227   about_dialog(memnew(AboutDialog))  279   about_dialog(memnew(AboutDialog))
+... ,                                    ... ,
+228   task_dialog(memnew(TaskDialog)),   280   task_dialog(memnew(TaskDialog)),
+229   project_dialog(memnew(AcceptDialo  281   project_dialog(memnew(AcceptDialo
+... g)),                                 ... g)),
+...                                      282   separator(memnew(VSeparator)),
+230   jvm_status_light(memnew(TextureRe  283   jvm_status_light(memnew(TextureRe
+... ct)),                                ... ct)),
+231   tool_bar_gradle_task_button(memne  284   tool_bar_gradle_task_button(memne
+... w(Button)),                          ... w(Button)),
+232   tool_bar_gradle_task_choice(memne  285   tool_bar_gradle_task_choice(memne
+... w(OptionButton)),                    ... w(OptionButton)),
+233   separator(memnew(VSeparator)) {}   286   tool_bar_jvm_run_mode_choice(memn
+...                                      ... ew(OptionButton)) {}
+234                                      287 
+235 GodotKotlinJvmEditor::~GodotKotlinJ  288 GodotKotlinJvmEditor::~GodotKotlinJ
+... vmEditor() {                         ... vmEditor() {
+...                                      289     if (EditorRun::instance_startin
+...                                      ... g_callback == &GodotKotlinJvmEditor
+...                                      ... ::on_editor_run_instance_starting) 
+...                                      ... {
+...                                      290         EditorRun::instance_startin
+...                                      ... g_callback = nullptr;
+...                                      291     }
+236     GradleTaskRunner::get_instance(  292     GradleTaskRunner::get_instance(
+... ).cleanup();                         ... ).cleanup();
+237     memdelete(about_dialog);         293     memdelete(about_dialog);
+238     memdelete(task_dialog);          294     memdelete(task_dialog);
+239     memdelete(project_dialog);       295     memdelete(project_dialog);
+240     memdelete(jvm_status_light);     296     memdelete(jvm_status_light);
+241     memdelete(tool_bar_gradle_task_  297     memdelete(tool_bar_gradle_task_
+... button);                             ... button);
+242     memdelete(tool_bar_gradle_task_  298     memdelete(tool_bar_gradle_task_
+... choice);                             ... choice);
+...                                      299     memdelete(tool_bar_jvm_run_mode
+...                                      ... _choice);
+243     memdelete(separator);            300     memdelete(separator);
+244 }                                    301 }
+245                                      302 
+
+src/editor/godot_kotlin_jvm_editor.h --- 1/2 --- C++
+21 21         ABOUT
+22 22     };
+.. 23 
+.. 24     enum JvmRunMode {
+.. 25         JVM_RUN_STANDARD = 0,
+.. 26         JVM_RUN_DEBUG = 1,
+.. 27         JVM_RUN_DEBUG_WAIT = 2,
+.. 28         JVM_RUN_DEBUG_AUTO_ATTACH = 3,
+.. 29     };
+23 30 
+24 31     PopupMenu* about_pop_menu;
+25 32     AboutDialog* about_dialog;
+
+src/editor/godot_kotlin_jvm_editor.h --- 2/2 --- C++
+31 38     TextureRect* jvm_status_light;
+32 39     Button* tool_bar_gradle_task_button;
+33 40     OptionButton* tool_bar_gradle_task_choice;
+.. 41     OptionButton* tool_bar_jvm_run_mode_choice;
+34 42 
+35 43     GDKotlin::State displayed_jvm_state {GDKotlin::State::NOT_STARTED};
+36 44 
+37 45     GodotKotlinJvmEditor();
+38 46     ~GodotKotlinJvmEditor();
+39 47 
+40 48     void on_gradle_task_pressed();
+.. 49     void on_jvm_run_mode_selected(int p_index);
+41 50     void on_menu_option_pressed(int option_id);
+42 51     void on_generate_project(bool erase_existing);
+43 52     void on_filesystem_change();
+44 53     void update_jvm_status(bool force = false);
+.. 54 
+.. 55     static void on_editor_run_instance_starting(int p_index, List<String>& r_arguments);
+45 56 
+46 57 protected:
+47 58     bool build() override;
+
+src/editor/strings.h --- C++
+ 6  6 constexpr const char* gradle_dir = "kotlin_jvm/gradle/gradle_wrapper_dir";
+ 7  7 constexpr const char* build_before_start = "kotlin_jvm/editor/build_gradle_before_start";
+ 8  8 constexpr const char* show_info_on_start = "kotlin_jvm/editor/show_info_on_start";
+ .  9 constexpr const char* jvm_run_mode = "kotlin_jvm/editor/run_mode";
+ 9 10 
+10 11 constexpr const char* start_build = "Building JVM project...";
+11 12 
+
+src/gd_kotlin.cpp --- Text (20 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 1:0)
+183         jvm_options.add_debug_optio  183         jvm_options.add_debug_optio
+... ns(                                  ... ns(
+184           user_configuration.jvm_de  184           user_configuration.jvm_de
+... bug_port,                            ... bug_port,
+185           user_configuration.jvm_de  185           user_configuration.jvm_de
+... bug_address,                         ... bug_address,
+186           user_configuration.wait_f  186           user_configuration.wait_f
+... or_debugger                          ... or_debugger,
+...                                      187           user_configuration.jvm_de
+...                                      ... bug_mode
+187         );                           188         );
+188     }                                189     }
+189 #endif                               190 #endif
+
+src/lifecycle/jvm_options.cpp --- C++
+ 5     options.push_back("-Xcheck:jni")   5     options.push_back("-Xcheck:jni")
+ . ;                                      . ;
+ 6 }                                      6 }
+ 7                                        7 
+ 8 void JvmOptions::add_debug_options(u   8 void JvmOptions::add_debug_options(u
+ . int16_t p_port, String& p_address, b   . int16_t p_port, String& p_address, b
+ . ool p_wait) {                          . ool p_wait, const String& p_mode) {
+ 9     String jvm_debug_port = String::   9     String jvm_debug_port = String::
+ . num_int64(p_port);                     . num_int64(p_port);
+10                                       10 
+11     String suspend { p_wait ? "y" :   11     String suspend { p_wait ? "y" : 
+.. "n" };                                .. "n" };
+..                                       12     bool is_client = (p_mode == "cli
+..                                       .. ent");
+..                                       13     String server = is_client ? "n" 
+..                                       .. : "y";
+..                                       14 
+..                                       15     String address = p_address;
+..                                       16     if (is_client && (address.is_emp
+..                                       .. ty() || address == "*")) {
+..                                       17         address = "127.0.0.1";
+..                                       18     }
+12                                       19 
+13     String debug_command {            20     String debug_command {
+14       vformat("-agentlib:jdwp=transp  21       vformat("-agentlib:jdwp=transp
+.. ort=dt_socket,server=y,suspend=%s,ad  .. ort=dt_socket,server=%s,suspend=%s,a
+.. dress=%s:%s", suspend, p_address, jv  .. ddress=%s:%s", server, suspend, addr
+.. m_debug_port)                         .. ess, jvm_debug_port)
+15     };                                22     };
+16     options.push_back(debug_command.  23     options.push_back(debug_command.
+.. utf8());                              .. utf8());
+17 }                                     24 }
+
+src/lifecycle/jvm_options.h --- C++
+24     LocalVector<CharString> options;
+25 
+26     void add_jni_checks();
+27     void add_debug_options(uint16_t p_port, String& p_address, bool p_wait, const String& p_mode = "server");
+28     void add_jmx_option(uint16_t p_port);
+29     void add_custom_options(const String& custom_options);
+30 
+
+src/lifecycle/jvm_user_configuration.cpp --- 1/5 --- Text (4 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 373:4)
+ 65  65         }
+ 66  66         json_dict.erase(DEBUG_ADDRESS_JSON_IDENTIFIER);
+ 67  67     }
+ ..  68     if (json_dict.has(DEBUG_MODE_JSON_IDENTIFIER)) {
+ ..  69         String mode = json_dict[DEBUG_MODE_JSON_IDENTIFIER];
+ ..  70         JVM_DEV_VERBOSE("Value for json argument: %s -> %s", DEBUG_MODE_JSON_IDENTIFIER, mode);
+ ..  71         if (mode == DEBUG_MODE_SERVER || mode == DEBUG_MODE_CLIENT) {
+ ..  72             json_config.jvm_debug_mode = mode;
+ ..  73         } else {
+ ..  74             is_invalid = true;
+ ..  75             JVM_LOG_WARNING("Invalid JVM debug mode value in configuration file: %s. It will be ignored", mode);
+ ..  76         }
+ ..  77         json_dict.erase(DEBUG_MODE_JSON_IDENTIFIER);
+ ..  78     }
+ 68  79     if (json_dict.has(WAIT_FOR_DEBUGGER_JSON_IDENTIFIER)) {
+ 69  80         String boolean = json_dict[WAIT_FOR_DEBUGGER_JSON_IDENTIFIER];
+ 70  81         JVM_DEV_VERBOSE("Value for json argument: %s -> %s", WAIT_FOR_DEBUGGER_JSON_IDENTIFIER, boolean);
+
+src/lifecycle/jvm_user_configuration.cpp --- 2/5 --- Text (4 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 373:4)
+171 182     json[USE_DEBUG_JSON_IDENTIFIER] = configuration.use_debug;
+172 183     json[DEBUG_PORT_JSON_IDENTIFIER] = configuration.jvm_debug_port;
+173 184     json[DEBUG_ADDRESS_JSON_IDENTIFIER] = configuration.jvm_debug_address;
+... 185     json[DEBUG_MODE_JSON_IDENTIFIER] = configuration.jvm_debug_mode;
+174 186     json[WAIT_FOR_DEBUGGER_JSON_IDENTIFIER] = configuration.wait_for_debugger;
+175 187 
+176 188     json[JMX_PORT_JSON_IDENTIFIER] = configuration.jvm_jmx_port;
+
+src/lifecycle/jvm_user_configuration.cpp --- 3/5 --- Text (4 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 373:4)
+232             } else {                 244             } else {
+233                 JVM_LOG_WARNING("Wr  245                 JVM_LOG_WARNING("Wr
+... ong JVM type in command line argume  ... ong JVM type in command line argume
+... nts: %s. It will be ignored", value  ... nts: %s. It will be ignored", value
+... );                                   ... );
+234             }                        246             }
+235         } else if (identifier == US  247         } else if (identifier == US
+... E_DEBUG_CMD_IDENTIFIER) {            ... E_DEBUG_CMD_IDENTIFIER || identifie
+...                                      ... r == JVM_DEBUG_CMD_IDENTIFIER) {
+236             configuration_map[USE_D  248             configuration_map[USE_D
+... EBUG_CMD_IDENTIFIER] = get_cmd_bool  ... EBUG_CMD_IDENTIFIER] = get_cmd_bool
+... _or_default(value, TRUE_STRING);     ... _or_default(value, true);
+237         } else if (identifier == DE  249         } else if (identifier == DE
+... BUG_PORT_CMD_IDENTIFIER) {           ... BUG_PORT_CMD_IDENTIFIER) {
+238             int64_t port = -1;       250             int64_t port = -1;
+239             if (value.is_valid_int(  251             if (value.is_valid_int(
+... )) { port = value.to_int(); }        ... )) { port = value.to_int(); }
+
+src/lifecycle/jvm_user_configuration.cpp --- 4/5 --- Text (4 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 373:4)
+243                 JVM_LOG_WARNING("In  255                 JVM_LOG_WARNING("In
+... valid JVM port value in command lin  ... valid JVM port value in command lin
+... e arguments: %s. It will be ignored  ... e arguments: %s. It will be ignored
+... ", port);                            ... ", port);
+244             }                        256             }
+245         } else if (identifier == DE  257         } else if (identifier == DE
+... BUG_ADDRESS_CMD_IDENTIFIER) {        ... BUG_ADDRESS_CMD_IDENTIFIER) {
+246             if (value.is_valid_ip_a  258             if (value.is_valid_ip_a
+... ddress()) {                          ... ddress() || value == "*") {
+247                 configuration_map[D  259                 configuration_map[D
+... EBUG_ADDRESS_CMD_IDENTIFIER] = valu  ... EBUG_ADDRESS_CMD_IDENTIFIER] = valu
+... e;                                   ... e;
+248             } else {                 260             } else {
+249                 JVM_LOG_WARNING("In  261                 JVM_LOG_WARNING("In
+... valid JVM address value command lin  ... valid JVM address value command lin
+... e arguments: %s. It will be ignored  ... e arguments: %s. It will be ignored
+... ", value);                           ... ", value);
+250             }                        262             }
+...                                      263         } else if (identifier == DE
+...                                      ... BUG_MODE_CMD_IDENTIFIER) {
+...                                      264             if (value == DEBUG_MODE
+...                                      ... _SERVER || value == DEBUG_MODE_CLIE
+...                                      ... NT) {
+...                                      265                 configuration_map[D
+...                                      ... EBUG_MODE_CMD_IDENTIFIER] = value;
+...                                      266             } else {
+...                                      267                 JVM_LOG_WARNING("In
+...                                      ... valid JVM debug mode value in comma
+...                                      ... nd line arguments: %s. It will be i
+...                                      ... gnored", value);
+...                                      268             }
+251         } else if (identifier == WA  269         } else if (identifier == WA
+... IT_FOR_DEBUGGER_CMD_IDENTIFIER || i  ... IT_FOR_DEBUGGER_CMD_IDENTIFIER || i
+... dentifier == JVM_WAIT_FOR_DEBUGGER_  ... dentifier == JVM_WAIT_FOR_DEBUGGER_
+... CMD_IDENTIFIER) {                    ... CMD_IDENTIFIER) {
+252             configuration_map[WAIT_  270             configuration_map[WAIT_
+... FOR_DEBUGGER_CMD_IDENTIFIER] = get_  ... FOR_DEBUGGER_CMD_IDENTIFIER] = get_
+... cmd_bool_or_default(value, TRUE_STR  ... cmd_bool_or_default(value, TRUE_STR
+... ING);                                ... ING);
+253         } else if (identifier == JM  271         } else if (identifier == JM
+... X_PORT_CMD_IDENTIFIER) {             ... X_PORT_CMD_IDENTIFIER) {
+
+src/lifecycle/jvm_user_configuration.cpp --- 5/5 --- Text (4 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 373:4)
+299     replace_json_value_by_cmd_value  317     replace_json_value_by_cmd_value
+... (cmd_map, json_config.vm_type, VM_T  ... (cmd_map, json_config.vm_type, VM_T
+... YPE_CMD_IDENTIFIER);                 ... YPE_CMD_IDENTIFIER);
+300     replace_json_value_by_cmd_value  318     replace_json_value_by_cmd_value
+... (cmd_map, json_config.jvm_debug_por  ... (cmd_map, json_config.jvm_debug_por
+... t, DEBUG_PORT_CMD_IDENTIFIER);       ... t, DEBUG_PORT_CMD_IDENTIFIER);
+301     replace_json_value_by_cmd_value  319     replace_json_value_by_cmd_value
+... (cmd_map, json_config.jvm_debug_add  ... (cmd_map, json_config.jvm_debug_add
+... ress, DEBUG_ADDRESS_CMD_IDENTIFIER)  ... ress, DEBUG_ADDRESS_CMD_IDENTIFIER)
+... ;                                    ... ;
+...                                      320     replace_json_value_by_cmd_value
+...                                      ... (cmd_map, json_config.jvm_debug_mod
+...                                      ... e, DEBUG_MODE_CMD_IDENTIFIER);
+302     replace_json_value_by_cmd_value  321     replace_json_value_by_cmd_value
+... (cmd_map, json_config.wait_for_debu  ... (cmd_map, json_config.wait_for_debu
+... gger, WAIT_FOR_DEBUGGER_CMD_IDENTIF  ... gger, WAIT_FOR_DEBUGGER_CMD_IDENTIF
+... IER);                                ... IER);
+303                                      322 
+304     if (cmd_map.has(DEBUG_PORT_CMD_  323     if (cmd_map.has(DEBUG_PORT_CMD_
+... IDENTIFIER) || cmd_map.has(DEBUG_AD  ... IDENTIFIER) || cmd_map.has(DEBUG_AD
+... DRESS_CMD_IDENTIFIER) || cmd_map.ha  ... DRESS_CMD_IDENTIFIER) || cmd_map.ha
+... s(WAIT_FOR_DEBUGGER_CMD_IDENTIFIER)  ... s(DEBUG_MODE_CMD_IDENTIFIER) || cmd
+... ) {                                  ... _map.has(WAIT_FOR_DEBUGGER_CMD_IDEN
+...                                      ... TIFIER)) {
+305         // Set use debug to true if  324         // Set use debug to true if
+...  any of the 3 previous arguments ar  ...  any of the debug arguments are use
+... e used.                              ... d.
+306         // Will be overridden if th  325         // Will be overridden if th
+... e actual argument is used.           ... e actual argument is used.
+307         json_config.use_debug = tru  326         json_config.use_debug = tru
+... e;                                   ... e;
+308     }                                327     }
+
+src/lifecycle/jvm_user_configuration.h --- 1/2 --- C++
+19 19 // COMMAND LINE IDENTIFIER
+20 20 static constexpr const char* VM_TYPE_CMD_IDENTIFIER {"--jvm-vm-type"};
+21 21 static constexpr const char* USE_DEBUG_CMD_IDENTIFIER {"--jvm-use-debug"};
+.. 22 static constexpr const char* JVM_DEBUG_CMD_IDENTIFIER {"--jvm-debug"};
+22 23 static constexpr const char* DEBUG_PORT_CMD_IDENTIFIER {"--jvm-debug-port"};
+23 24 static constexpr const char* DEBUG_ADDRESS_CMD_IDENTIFIER {"--jvm-debug-address"};
+.. 25 static constexpr const char* DEBUG_MODE_JSON_IDENTIFIER {"debug_mode"};
+.. 26 static constexpr const char* DEBUG_MODE_CMD_IDENTIFIER {"--jvm-debug-mode"};
+.. 27 static constexpr const char* DEBUG_MODE_SERVER {"server"};
+.. 28 static constexpr const char* DEBUG_MODE_CLIENT {"client"};
+24 29 static constexpr const char* WAIT_FOR_DEBUGGER_CMD_IDENTIFIER {"--jvm-wait-for-debugger"};
+25 30 static constexpr const char* JVM_WAIT_FOR_DEBUGGER_CMD_IDENTIFIER {"--jvm-wait-for-debugger"};
+26 31 static constexpr const char* JMX_PORT_CMD_IDENTIFIER {"--jvm-jmx-port"};
+
+src/lifecycle/jvm_user_configuration.h --- 2/2 --- C++
+44 49     bool use_debug {false};
+45 50     int32_t jvm_debug_port {5005};
+46 51     String jvm_debug_address {"*"};
+.. 52     String jvm_debug_mode {"server"};
+47 53     bool wait_for_debugger {true};
+48 54 
+49 55     int32_t jvm_jmx_port {-1};
+
