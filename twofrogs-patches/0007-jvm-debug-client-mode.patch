@@ -1,40 +1,167 @@
-src/editor/godot_kotlin_jvm_editor.cpp --- 1/3 --- C++
-121     Control* editor_base_control = get_editor_interface()->get_base_control();
-122 
-123     switch (notification) {
-124         case NOTIFICATION_ENTER_TREE: {
-125             _EDITOR_DEF(build_before_start, false);
-126             _EDITOR_DEF(show_info_on_start, true);
-127             _GLOBAL_DEF(gradle_dir, "res://");
+src/editor/godot_kotlin_jvm_editor.cpp --- 1/7 --- C++
+ 15  15 #include <editor/file_system/editor_file_system.h>
+ 16  16 #include <gd_kotlin.h>
+ ..  17 
+ ..  18 void GodotKotlinJvmEditor::on_jvm_run_mode_selected(int p_index) {
+ ..  19     String current_args = ProjectSettings::get_singleton()->get_setting("editor/run/main_run_args");
+ ..  20 
+ ..  21     Vector<String> split_args = current_args.split(" ", false);
+ ..  22     Vector<String> remaining_args;
+ ..  23     for (int i = 0; i < split_args.size(); i++) {
+ ..  24         String arg = split_args[i].strip_edges();
+ ..  25         if (!arg.begins_with("--jvm-") && !arg.begins_with("jvm-") && !arg.begins_with("--use-debug") && !arg.begins_with("use-debug")) {
+ ..  26             remaining_args.push_back(arg);
+ ..  27         }
+ ..  28     }
+ ..  29 
+ ..  30     String jvm_args;
+ ..  31     switch (p_index) {
+ ..  32         case JVM_RUN_DEBUG:
+ ..  33             jvm_args = "--jvm-use-debug=true --jvm-debug-port=5050 --jvm-wait-for-debugger=false";
+ ..  34             break;
+ ..  35         case JVM_RUN_DEBUG_WAIT:
+ ..  36             jvm_args = "--jvm-use-debug=true --jvm-debug-port=5050 --jvm-wait-for-debugger=true";
+ ..  37             break;
+ ..  38         case JVM_RUN_DEBUG_AUTO_ATTACH:
+ ..  39             jvm_args = "--jvm-use-debug=true --jvm-debug-port=5005 --jvm-debug-mode=client --jvm-wait-for-debugger=false";
+ ..  40             break;
+ ..  41         case JVM_RUN_STANDARD:
+ ..  42         default:
+ ..  43             break;
+ ..  44     }
+ ..  45 
+ ..  46     if (!jvm_args.is_empty()) {
+ ..  47         Vector<String> jvm_split = jvm_args.split(" ", false);
+ ..  48         for (int i = 0; i < jvm_split.size(); i++) {
+ ..  49             remaining_args.push_back(jvm_split[i]);
+ ..  50         }
+ ..  51     }
+ ..  52 
+ ..  53     String final_args = String(" ").join(remaining_args).strip_edges();
+ ..  54 
+ ..  55     ProjectSettings::get_singleton()->set_setting("editor/run/main_run_args", final_args);
+ ..  56     ProjectSettings::get_singleton()->save();
+ ..  57 }
+ 17  58 
+ 18  59 void GodotKotlinJvmEditor::on_menu_option_pressed(int option_id) {
+ 19  60     switch (option_id) {
 
-src/editor/godot_kotlin_jvm_editor.cpp --- 2/3 --- C++
-184 184             );
-185 185             set_process(true);
-186 186             break;
-... 187         }
-187 188 
-188 189         case NOTIFICATION_PROCESS:
-189 190             update_jvm_status();
+src/editor/godot_kotlin_jvm_editor.cpp --- 2/7 --- C++
+121 162     Control* editor_base_control = get_editor_interface()->get_base_control();
+122 163 
+123 164     switch (notification) {
+124 165         case NOTIFICATION_ENTER_TREE: {
+125 166             _EDITOR_DEF(build_before_start, false);
+126 167             _EDITOR_DEF(show_info_on_start, true);
+127 168             _GLOBAL_DEF(gradle_dir, "res://");
 
-src/editor/godot_kotlin_jvm_editor.cpp --- 3/3 --- C++
-227   about_dialog(memnew(AboutDialog))  228   about_dialog(memnew(AboutDialog))
+src/editor/godot_kotlin_jvm_editor.cpp --- 3/7 --- C++
+149 190 
+150 191             add_control_to_container(CustomControlContainer::CONTAINER_TOOLBAR, separator);
+... 192 
+... 193             tool_bar_jvm_run_mode_choice->set_flat(true);
+... 194             tool_bar_jvm_run_mode_choice->add_item("Standard", JVM_RUN_STANDARD);
+... 195             tool_bar_jvm_run_mode_choice->add_item("Debug", JVM_RUN_DEBUG);
+... 196             tool_bar_jvm_run_mode_choice->add_item("Debug w/ Wait", JVM_RUN_DEBUG_WAIT);
+... 197             tool_bar_jvm_run_mode_choice->add_item("Debug Auto-attach", JVM_RUN_DEBUG_AUTO_ATTACH);
+... 198             tool_bar_jvm_run_mode_choice->set_fit_to_longest_item(false);
+... 199             tool_bar_jvm_run_mode_choice->set_tooltip_text("Select JVM Execution Mode for running instances");
+... 200 
+... 201             String current_args = ProjectSettings::get_singleton()->get_setting("editor/run/main_run_args");
+... 202             if (current_args.contains("jvm-debug-mode=client")) {
+... 203                 tool_bar_jvm_run_mode_choice->select(JVM_RUN_DEBUG_AUTO_ATTACH);
+... 204             } else if (current_args.contains("jvm-wait-for-debugger=true")) {
+... 205                 tool_bar_jvm_run_mode_choice->select(JVM_RUN_DEBUG_WAIT);
+... 206             } else if (current_args.contains("jvm-use-debug=true") || current_args.contains("use_debug=true")) {
+... 207                 tool_bar_jvm_run_mode_choice->select(JVM_RUN_DEBUG);
+... 208             } else {
+... 209                 tool_bar_jvm_run_mode_choice->select(JVM_RUN_STANDARD);
+... 210             }
+... 211 
+... 212             tool_bar_jvm_run_mode_choice->connect(SNAME("item_selected"), callable_mp(this, &GodotKotlinJvmEditor::on_jvm_run_mode_selected));
+... 213             add_control_to_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_jvm_run_mode_choice);
+151 214 
+152 215             tool_bar_gradle_task_choice->set_flat(true);
+153 216             tool_bar_gradle_task_choice->add_item("Build", GradleTaskRunner::Task::BUILD_DEBUG);
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 4/7 --- C++
+184 247             );
+185 248             set_process(true);
+186 249             break;
+... 250         }
+187 251 
+188 252         case NOTIFICATION_PROCESS:
+189 253             update_jvm_status();
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 5/7 --- C++
+215 279             remove_tool_menu_item("Kotlin/JVM");
+216 280             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, jvm_status_light);
+217 281             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, separator);
+... 282             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_jvm_run_mode_choice);
+218 283             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_gradle_task_choice);
+219 284             remove_control_from_container(CustomControlContainer::CONTAINER_TOOLBAR, tool_bar_gradle_task_button);
+220 285             break;
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 6/7 --- C++
+227   about_dialog(memnew(AboutDialog))  292   about_dialog(memnew(AboutDialog))
 ... ,                                    ... ,
-228   task_dialog(memnew(TaskDialog)),   229   task_dialog(memnew(TaskDialog)),
-229   project_dialog(memnew(AcceptDialo  230   project_dialog(memnew(AcceptDialo
+228   task_dialog(memnew(TaskDialog)),   293   task_dialog(memnew(TaskDialog)),
+229   project_dialog(memnew(AcceptDialo  294   project_dialog(memnew(AcceptDialo
 ... g)),                                 ... g)),
-...                                      231   separator(memnew(VSeparator)),
-230   jvm_status_light(memnew(TextureRe  232   jvm_status_light(memnew(TextureRe
+...                                      295   separator(memnew(VSeparator)),
+230   jvm_status_light(memnew(TextureRe  296   jvm_status_light(memnew(TextureRe
 ... ct)),                                ... ct)),
-231   tool_bar_gradle_task_button(memne  233   tool_bar_gradle_task_button(memne
+231   tool_bar_gradle_task_button(memne  297   tool_bar_gradle_task_button(memne
 ... w(Button)),                          ... w(Button)),
-232   tool_bar_gradle_task_choice(memne  234   tool_bar_gradle_task_choice(memne
-... w(OptionButton)),                    ... w(OptionButton)) {}
-233   separator(memnew(VSeparator)) {}   ... 
-234                                      235 
-235 GodotKotlinJvmEditor::~GodotKotlinJ  236 GodotKotlinJvmEditor::~GodotKotlinJ
+232   tool_bar_gradle_task_choice(memne  298   tool_bar_gradle_task_choice(memne
+... w(OptionButton)),                    ... w(OptionButton)),
+233   separator(memnew(VSeparator)) {}   299   tool_bar_jvm_run_mode_choice(memn
+...                                      ... ew(OptionButton)) {}
+234                                      300 
+235 GodotKotlinJvmEditor::~GodotKotlinJ  301 GodotKotlinJvmEditor::~GodotKotlinJ
 ... vmEditor() {                         ... vmEditor() {
-236     GradleTaskRunner::get_instance(  237     GradleTaskRunner::get_instance(
+236     GradleTaskRunner::get_instance(  302     GradleTaskRunner::get_instance(
 ... ).cleanup();                         ... ).cleanup();
+
+src/editor/godot_kotlin_jvm_editor.cpp --- 7/7 --- C++
+240 306     memdelete(jvm_status_light);
+241 307     memdelete(tool_bar_gradle_task_button);
+242 308     memdelete(tool_bar_gradle_task_choice);
+... 309     memdelete(tool_bar_jvm_run_mode_choice);
+243 310     memdelete(separator);
+244 311 }
+245 312 
+
+src/editor/godot_kotlin_jvm_editor.h --- 1/2 --- C++
+21 21         ABOUT
+22 22     };
+.. 23 
+.. 24     enum JvmRunMode {
+.. 25         JVM_RUN_STANDARD = 0,
+.. 26         JVM_RUN_DEBUG = 1,
+.. 27         JVM_RUN_DEBUG_WAIT = 2,
+.. 28         JVM_RUN_DEBUG_AUTO_ATTACH = 3,
+.. 29     };
+23 30 
+24 31     PopupMenu* about_pop_menu;
+25 32     AboutDialog* about_dialog;
+
+src/editor/godot_kotlin_jvm_editor.h --- 2/2 --- C++
+31 38     TextureRect* jvm_status_light;
+32 39     Button* tool_bar_gradle_task_button;
+33 40     OptionButton* tool_bar_gradle_task_choice;
+.. 41     OptionButton* tool_bar_jvm_run_mode_choice;
+34 42 
+35 43     GDKotlin::State displayed_jvm_state {GDKotlin::State::NOT_STARTED};
+36 44 
+37 45     GodotKotlinJvmEditor();
+38 46     ~GodotKotlinJvmEditor();
+39 47 
+40 48     void on_gradle_task_pressed();
+.. 49     void on_jvm_run_mode_selected(int p_index);
+41 50     void on_menu_option_pressed(int option_id);
+42 51     void on_generate_project(bool erase_existing);
+43 52     void on_filesystem_change();
 
 src/gd_kotlin.cpp --- Text (20 C++ parse errors, exceeded DFT_PARSE_ERROR_LIMIT, first at 1:0)
 183         jvm_options.add_debug_optio  183         jvm_options.add_debug_optio
