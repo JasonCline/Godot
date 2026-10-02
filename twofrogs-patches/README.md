@@ -48,4 +48,5 @@ git apply ../../twofrogs-patches/0001-fix-wait-for-debugger-cli-argument.patch
 git apply ../../twofrogs-patches/0002-godot-compiler-memory-and-base-version-assembly.patch
 git apply ../../twofrogs-patches/0003-backward-compatible-extension-aliases.patch
 git apply ../../twofrogs-patches/0004-aws-codeartifact-publishing.patch
+git apply ../../twofrogs-patches/0007-jvm-debug-client-mode-and-editor-toolbar-mode-selector.patch
 ```
